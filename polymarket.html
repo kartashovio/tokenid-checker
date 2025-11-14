@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Polymarket Token IDs</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #050b1a;
+        color: #f8fafc;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        min-height: 100vh;
+        background: inherit;
+        color: inherit;
+      }
+
+      .page {
+        max-width: 960px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        color: #f8fafc;
+      }
+
+      header p {
+        margin: 0;
+        color: rgba(248, 250, 252, 0.72);
+      }
+
+      .slug-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+        background: rgba(30, 41, 59, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .slug-form label {
+        display: flex;
+        flex-direction: column;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(248, 250, 252, 0.88);
+      }
+
+      .slug-form input {
+        margin-top: 6px;
+        padding: 10px 12px;
+        font-size: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        min-width: 260px;
+        background: rgba(15, 23, 42, 0.85);
+        color: #f8fafc;
+      }
+
+      .slug-form input::placeholder {
+        color: rgba(226, 232, 240, 0.6);
+      }
+
+      .slug-form button {
+        padding: 10px 18px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid rgba(56, 239, 184, 0.7);
+        cursor: pointer;
+        background: rgba(56, 239, 184, 0.18);
+        color: #bcfff0;
+        transition: background 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+      }
+
+      .slug-form button:hover {
+        background: rgba(56, 239, 184, 0.3);
+        border-color: rgba(111, 247, 209, 0.85);
+        transform: translateY(-1px);
+      }
+
+      .status {
+        min-height: 20px;
+        font-size: 14px;
+        color: rgba(226, 232, 240, 0.75);
+      }
+
+      .results {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .event-header {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .event-header h2 {
+        margin: 0;
+        font-size: 22px;
+        color: #f8fafc;
+      }
+
+      .event-meta {
+        font-size: 13px;
+        color: rgba(226, 232, 240, 0.65);
+      }
+
+      .market-card {
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.88);
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 18px 44px rgba(2, 6, 23, 0.35);
+      }
+
+      .market-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #f8fafc;
+      }
+
+      .tokens-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(226, 232, 240, 0.6);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .tokens-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 10px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .token-pill {
+        background: rgba(71, 85, 105, 0.25);
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      .token-pill-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .token-pill-outcome {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #0b1220;
+        background: rgba(56, 239, 184, 0.85);
+      }
+
+      .token-pill-outcome[data-variant="no"] {
+        color: #fdf2f8;
+        background: rgba(244, 63, 94, 0.42);
+        border: 1px solid rgba(248, 113, 113, 0.5);
+      }
+
+      .token-pill span {
+        display: block;
+      }
+
+      .token-pill-value {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        word-break: break-all;
+        overflow-wrap: anywhere;
+        color: rgba(248, 250, 252, 0.92);
+        line-height: 1.35;
+      }
+
+      .token-pill button {
+        border: 1px solid rgba(56, 239, 184, 0.5);
+        background: rgba(56, 239, 184, 0.1);
+        color: #bcfff0;
+        font-size: 11px;
+        cursor: pointer;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background 0.2s ease, border-color 0.2s ease;
+      }
+
+      .token-pill button:hover {
+        background: rgba(56, 239, 184, 0.25);
+        border-color: rgba(111, 247, 209, 0.8);
+      }
+
+      .token-pill button:disabled {
+        cursor: not-allowed;
+        background: rgba(71, 85, 105, 0.35);
+        border-color: rgba(148, 163, 184, 0.35);
+        color: rgba(226, 232, 240, 0.45);
+      }
+
+      .empty {
+        font-size: 14px;
+        color: rgba(226, 232, 240, 0.6);
+      }
+
+      @media (max-width: 520px) {
+        body {
+          padding: 20px;
+        }
+
+        .slug-form {
+          align-items: stretch;
+        }
+
+        .slug-form button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <h1>Polymarket Token IDs</h1>
+        <p>Enter the event slug or open Polymarket, then click the extension icon.</p>
+      </header>
+      <form id="slugForm" class="slug-form">
+        <label>
+          Event slug
+          <input id="slugInput" type="text" placeholder="e.g., fed-decision-in-december" />
+        </label>
+        <button type="submit">Load</button>
+      </form>
+      <div id="status" class="status"></div>
+      <main id="app" class="results"></main>
+    </div>
+    <script type="module" src="polymarket.js"></script>
+  </body>
+</html>
+

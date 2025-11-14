@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Opinion & Polymarket Helper",
+  "description": "Shows Topic IDs on Opinion Trade pages and fetches Polymarket token IDs on demand.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://app.opinion.trade/detail*",
+    "https://proxy.opinion.trade:8443/*",
+    "https://polymarket.com/event*",
+    "https://gamma-api.polymarket.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Opinion & Polymarket Helper"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.opinion.trade/detail*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
+
