@@ -25,5 +25,5 @@ Token IDs uniquely identify market outcomes on Opinion Trade and Polymarket. The
 ## 5. Credits
 
 - My Twitter: [@kartashovio](https://x.com/kartashovio)
-- Thread about this repository: https://x.com/kartashovio/status/1989235907140952539
+- Thread about this repository: https://x.com/kartashovio/status/1989238928243667065 
 - Opinion referral link: https://app.opinion.trade/?code=hIOeW6
