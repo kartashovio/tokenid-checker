@@ -22,3 +22,8 @@ Token IDs uniquely identify market outcomes on Opinion Trade and Polymarket. The
 - The viewer lists every market, outcome, and token ID, ready to copy.
 - You can also paste any event slug into the viewer to fetch data directly.
 
+## 5. Credits
+
+- My Twitter: [@kartashovio](https://x.com/kartashovio)
+- Thread about this repository: https://x.com/kartashovio/status/1989235907140952539
+- Opinion referral link: https://app.opinion.trade/?code=hIOeW6
