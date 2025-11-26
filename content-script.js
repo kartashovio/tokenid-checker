@@ -12,6 +12,8 @@
   const multiBadges = new Map();
   let multiFetchToken = 0;
   const multiCache = new Map();
+  let badgeCheckInterval = null;
+  const topicIdToChildListMap = new Map(); // Сохраняем данные для восстановления
 
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) {
@@ -115,12 +117,13 @@
 
   function cleanupMulti() {
     for (const [element, badge] of Array.from(multiBadges.entries())) {
-      if (badge.parentElement === element) {
+      if (badge.isConnected) {
         badge.remove();
       }
       delete element.dataset.opinionTopicHelperBase;
       multiBadges.delete(element);
     }
+    topicIdToChildListMap.clear();
   }
 
   function cleanupAll() {
@@ -173,11 +176,29 @@
       return !isBadgeNode(mutation.target);
     }
     if (mutation.type === "childList") {
+      // Проверяем, не были ли удалены наши badge
+      for (const node of mutation.removedNodes) {
+        if (isBadgeNode(node)) {
+          // Если удален наш badge, нужно пересоздать
+          return true;
+        }
+        // Проверяем, не был ли удален элемент, к которому привязан badge
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          for (const [element] of multiBadges.entries()) {
+            if (node === element || node.contains(element)) {
+              return true;
+            }
+          }
+        }
+      }
+      
       for (const node of mutation.addedNodes) {
         if (!containsBadgeNode(node)) {
           return true;
         }
       }
+      
+      // Игнорируем удаления, если это не наши badge и не наши элементы
       for (const node of mutation.removedNodes) {
         if (!containsBadgeNode(node)) {
           return true;
@@ -217,8 +238,14 @@
     if (!badge) {
       badge = document.createElement("span");
       badge.className = `${BADGE_CLASS} ${INLINE_BADGE_CLASS}`;
+      badge.dataset.opinionTopicHelperBadge = "true";
       multiBadges.set(element, badge);
       element.appendChild(badge);
+    } else if (!badge.isConnected || !element.contains(badge)) {
+      // Если badge был удален из DOM или больше не является дочерним элементом, перевставляем его
+      if (element.isConnected) {
+        element.appendChild(badge);
+      }
     }
     return badge;
   }
@@ -256,14 +283,34 @@
   }
 
   function getCandidateTitleElements() {
-    return Array.from(document.querySelectorAll("p.text-bodyL"));
+    // Ищем элементы, которые еще не имеют badge или имеют badge, но он был удален
+    const allElements = Array.from(document.querySelectorAll("p.text-bodyL"));
+    return allElements.filter(el => {
+      // Проверяем, что элемент видим и подключен к DOM
+      if (!el.isConnected || !isElementVisible(el)) {
+        return false;
+      }
+      // Если у элемента уже есть badge в нашей карте, проверяем его состояние
+      const existingBadge = multiBadges.get(el);
+      if (existingBadge && existingBadge.isConnected && el.contains(existingBadge)) {
+        return true; // Элемент уже обработан, но может потребоваться обновление
+      }
+      return true;
+    });
   }
 
   function findElementForTitle(title) {
     const normalizedTitle = normalize(title);
     const elements = getCandidateTitleElements();
     for (const element of elements) {
-      const liveText = normalize(element.textContent);
+      // Получаем текст без badge, если он уже есть
+      let liveText = normalize(element.textContent);
+      const existingBadge = multiBadges.get(element);
+      if (existingBadge && existingBadge.textContent) {
+        // Удаляем текст badge из текста элемента для сравнения
+        liveText = liveText.replace(normalize(existingBadge.textContent), '').trim();
+      }
+      
       if (element.dataset.opinionTopicHelperBase !== liveText) {
         element.dataset.opinionTopicHelperBase = liveText;
       }
@@ -307,10 +354,50 @@
     return null;
   }
 
+  function restoreBadgesForMulti() {
+    if (!enabled || multiBadges.size === 0) {
+      return;
+    }
+
+    const { topicId, isMulti } = getUrlContext();
+    if (!topicId || !isMulti) {
+      return;
+    }
+
+    const childList = topicIdToChildListMap.get(topicId);
+    if (!childList) {
+      return;
+    }
+
+    // Проверяем и восстанавливаем badge для всех элементов
+    for (const child of childList) {
+      if (!child?.title || !child?.topicId) {
+        continue;
+      }
+
+      const element = findElementForTitle(child.title);
+      if (!element || !element.isConnected) {
+        continue;
+      }
+
+      const badge = multiBadges.get(element);
+      if (badge) {
+        // Если badge существует, но не подключен к DOM, перевставляем
+        if (!badge.isConnected || !element.contains(badge)) {
+          if (element.isConnected) {
+            element.appendChild(badge);
+            badge.textContent = `(topicID: ${child.topicId})`;
+          }
+        }
+      }
+    }
+  }
+
   async function applyMulti(topicId) {
     cleanupSingle();
     if (!topicId) {
       cleanupMulti();
+      topicIdToChildListMap.delete(topicId);
       return;
     }
 
@@ -320,7 +407,11 @@
       return;
     }
 
+    // Сохраняем данные для возможного восстановления
+    topicIdToChildListMap.set(topicId, childList);
+
     const matchedElements = new Set();
+    const topicIdMap = new Map(); // Сохраняем соответствие element -> topicId
 
     for (const child of childList) {
       if (!child?.title || !child?.topicId) {
@@ -328,22 +419,46 @@
       }
 
       const element = findElementForTitle(child.title);
-      if (!element) {
+      if (!element || !element.isConnected) {
         continue;
       }
 
       matchedElements.add(element);
+      topicIdMap.set(element, child.topicId);
       const badge = getOrCreateInlineBadge(element);
-      badge.textContent = `(topicID: ${child.topicId})`;
+      
+      // Обновляем badge только если topicId изменился
+      const expectedText = `(topicID: ${child.topicId})`;
+      if (badge.textContent !== expectedText) {
+        badge.textContent = expectedText;
+      }
+      
+      // Убеждаемся, что badge видим и правильно вставлен
+      if (badge.style.display === 'none') {
+        badge.style.display = '';
+      }
+      if (!element.contains(badge) && element.isConnected) {
+        element.appendChild(badge);
+      }
     }
 
+    // Удаляем badge только для элементов, которые больше не соответствуют
     for (const [element, badge] of Array.from(multiBadges.entries())) {
       if (!matchedElements.has(element)) {
-        if (badge.parentElement === element) {
+        if (badge.isConnected) {
           badge.remove();
         }
         delete element.dataset.opinionTopicHelperBase;
         multiBadges.delete(element);
+      } else if (!badge.isConnected || (element.isConnected && !element.contains(badge))) {
+        // Если badge был удален или отсоединен, но элемент все еще в списке, перевставляем
+        if (element.isConnected) {
+          const topicIdValue = topicIdMap.get(element);
+          if (topicIdValue) {
+            element.appendChild(badge);
+            badge.textContent = `(topicID: ${topicIdValue})`;
+          }
+        }
       }
     }
   }
@@ -395,6 +510,25 @@
     window.addEventListener("locationchange", handleLocationChange);
   }
 
+  function startBadgeCheckInterval() {
+    if (badgeCheckInterval) {
+      return;
+    }
+    // Проверяем состояние badge каждые 500ms
+    badgeCheckInterval = setInterval(() => {
+      if (enabled) {
+        restoreBadgesForMulti();
+      }
+    }, 500);
+  }
+
+  function stopBadgeCheckInterval() {
+    if (badgeCheckInterval) {
+      clearInterval(badgeCheckInterval);
+      badgeCheckInterval = null;
+    }
+  }
+
   function setEnabled(nextEnabled) {
     if (enabled === nextEnabled) {
       return;
@@ -404,9 +538,11 @@
     if (enabled) {
       ensureStyles();
       ensureDomObserver();
+      startBadgeCheckInterval();
       debouncedProcess();
     } else {
       disconnectDomObserver();
+      stopBadgeCheckInterval();
       cleanupAll();
     }
   }
@@ -433,6 +569,7 @@
       debouncedProcess();
     }
     requestInitialState();
+    startBadgeCheckInterval();
   }
 
   init();
